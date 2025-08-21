@@ -1,0 +1,127 @@
+<div class="video-call-container">
+  <!-- Header -->
+  <div class="header">
+    <h2>MediaSoup Video Call</h2>
+    <div class="connection-status" [class.connected]="state.isConnected">
+      {{ state.isConnected ? 'Connected' : 'Disconnected' }}
+    </div>
+  </div>
+
+  <!-- Join Form -->
+  <div class="join-form" *ngIf="!state.isConnected">
+    <div class="form-group">
+      <label for="serverUrl">Server URL:</label>
+      <input
+        id="serverUrl"
+        type="text"
+        [value]="serverUrl"
+        (input)="serverUrl = $event.target.value"
+        placeholder="http://localhost:3000"
+      />
+    </div>
+    <div class="form-group">
+      <label for="roomId">Room ID:</label>
+      <input
+        id="roomId"
+        type="text"
+        [value]="roomId"
+        (input)="roomId = $event.target.value"
+        placeholder="room123"
+      />
+    </div>
+    <div class="form-group">
+      <label for="displayName">Your Name:</label>
+      <input
+        id="displayName"
+        type="text"
+        [value]="displayName"
+        (input)="displayName = $event.target.value"
+        placeholder="Your Name"
+      />
+    </div>
+    <button class="join-btn" (click)="joinRoom()" [disabled]="joining">
+      {{ joining ? 'Joining...' : 'Join Room' }}
+    </button>
+  </div>
+
+  <!-- Error Message -->
+  <div class="error-message" *ngIf="state.error">
+    {{ state.error }}
+  </div>
+
+  <!-- Video Grid -->
+  <div class="video-grid" *ngIf="state.isConnected">
+    <!-- Local Video -->
+    <div class="video-container local-video">
+      <video #localVideo autoplay muted playsinline [class.hidden]="!localVideoEnabled"></video>
+      <div class="video-overlay">
+        <span class="participant-name">You (Local)</span>
+        <div class="video-controls">
+          <button class="control-btn" [class.disabled]="!localAudioEnabled" (click)="toggleAudio()">
+            {{ localAudioEnabled ? '🎤' : '🔇' }}
+          </button>
+          <button class="control-btn" [class.disabled]="!localVideoEnabled" (click)="toggleVideo()">
+            {{ localVideoEnabled ? '📹' : '📷' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Remote Videos -->
+    <div
+      class="video-container remote-video"
+      *ngFor="let consumer of remoteConsumers | keyvalue; trackBy: trackByConsumerId"
+    >
+      <video
+        [id]="'remote-' + consumer.key"
+        autoplay
+        playsinline
+        [muted]="consumer.value.kind === 'audio'"
+      ></video>
+      <div class="video-overlay">
+        <span class="participant-name">Remote User</span>
+        <div class="media-info">
+          <span class="media-type">{{ consumer.value.kind }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="bottom-controls" *ngIf="state.isConnected">
+    <button
+      class="control-btn start-media"
+      (click)="startMedia()"
+      [disabled]="state.isProducing"
+      *ngIf="!state.isProducing"
+    >
+      Start Camera & Mic
+    </button>
+
+    <button class="control-btn leave-btn" (click)="leaveRoom()">Leave Room</button>
+  </div>
+
+  <!-- Participants List -->
+  <div class="participants-panel" *ngIf="participants.length > 0">
+    <h3>Participants ({{ participants.length }})</h3>
+    <div class="participant-list">
+      <div
+        class="participant-item"
+        *ngFor="let participant of participants"
+        [class.local]="participant.isLocal"
+        [class.active-speaker]="activeSpeaker?.peerId === participant.id"
+      >
+        <span class="participant-name">
+          {{ participant.displayName }}
+          <span class="speaking-indicator" *ngIf="activeSpeaker?.peerId === participant.id"
+            >🎙️</span
+          >
+        </span>
+        <div class="participant-status">
+          <span class="status-icon" [class.enabled]="participant.audioEnabled">🎤</span>
+          <span class="status-icon" [class.enabled]="participant.videoEnabled">📹</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
