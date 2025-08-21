@@ -40,13 +40,39 @@
       />
     </div>
     <button class="join-btn" (click)="joinRoom()" [disabled]="joining">
-      {{ joining ? 'Joining...' : 'Join Room' }}
+      {{ joining ? '🔄 Connecting...' : '🚀 Join Room' }}
     </button>
+
+    <div class="joining-status" *ngIf="joining">
+      <p>🔌 Connecting to {{ serverUrl }}...</p>
+      <p><small>This may take a few seconds. Please wait...</small></p>
+    </div>
   </div>
 
   <!-- Error Message -->
   <div class="error-message" *ngIf="state.error">
+    <strong>❌ Connection Error:</strong><br />
     {{ state.error }}
+    <br /><br />
+    <small>📝 Debug info: Check browser console for detailed logs</small>
+  </div>
+
+  <!-- Debug Info -->
+  <div class="debug-info" *ngIf="!state.isConnected && !joining">
+    <h4>🔧 Connection Debug Info</h4>
+    <ul>
+      <li><strong>Server URL:</strong> {{ serverUrl }}</li>
+      <li><strong>Room ID:</strong> {{ roomId }}</li>
+      <li><strong>Display Name:</strong> {{ displayName }}</li>
+      <li>
+        <strong>WebSocket URL:</strong> {{ serverUrl.replace('http', 'ws') }}/?roomId={{
+          roomId
+        }}&peerId=...
+      </li>
+    </ul>
+    <p>
+      <small>Make sure your backend mediasoup server is running and supports protoo protocol</small>
+    </p>
   </div>
 
   <!-- Video Grid -->
@@ -76,34 +102,54 @@
         [id]="'remote-' + consumer.key"
         autoplay
         playsinline
-        [muted]="consumer.value.kind === 'audio'"
+        [muted]="consumer.value.kind === 'video'"
       ></video>
       <div class="video-overlay">
-        <span class="participant-name">Remote User</span>
+        <span class="participant-name">
+          Remote {{ consumer.value.kind === 'video' ? 'Video' : 'Audio' }}
+          <small>Unknown</small>
+        </span>
         <div class="media-info">
-          <span class="media-type">{{ consumer.value.kind }}</span>
+          <span class="media-type">📹 {{ consumer.value.kind }}</span>
+          <span class="consumer-id">ID: {{ consumer.key.substring(0, 8) }}...</span>
         </div>
       </div>
+    </div>
+
+    <!-- Debug: Show consumer count -->
+    <div class="debug-consumers" *ngIf="remoteConsumers.size === 0 && state.isConnected">
+      <p>🔍 Waiting for remote participants...</p>
+      <small>Remote consumers: {{ remoteConsumers.size }}</small>
+    </div>
+
+    <!-- Echo Prevention Tip -->
+    <div class="echo-tip" *ngIf="state.isProducing">
+      <p>🎧 <strong>Tip:</strong> Use headphones to prevent echo!</p>
+      <small>If you hear your own voice, mute your audio or use headphones</small>
     </div>
   </div>
 
   <!-- Controls -->
   <div class="bottom-controls" *ngIf="state.isConnected">
-    <button
-      class="control-btn start-media"
-      (click)="startMedia()"
-      [disabled]="state.isProducing"
-      *ngIf="!state.isProducing"
-    >
-      Start Camera & Mic
+    <div class="media-controls" *ngIf="state.isProducing">
+      <button class="control-btn" [class.disabled]="!localAudioEnabled" (click)="toggleAudio()">
+        {{ localAudioEnabled ? '🎤 Mute' : '🔇 Unmute' }}
+      </button>
+      <button class="control-btn" [class.disabled]="!localVideoEnabled" (click)="toggleVideo()">
+        {{ localVideoEnabled ? '📹 Stop Video' : '📷 Start Video' }}
+      </button>
+    </div>
+
+    <button class="control-btn manual-start" (click)="startMedia()" *ngIf="!state.isProducing">
+      📹 Restart Media
     </button>
 
     <button class="control-btn leave-btn" (click)="leaveRoom()">Leave Room</button>
   </div>
 
   <!-- Participants List -->
-  <div class="participants-panel" *ngIf="participants.length > 0">
-    <h3>Participants ({{ participants.length }})</h3>
+  <div class="participants-panel" *ngIf="participants.length > 0 || state.isConnected">
+    <h3>Participants ({{ participants.length }}) | Consumers ({{ remoteConsumers.size }})</h3>
     <div class="participant-list">
       <div
         class="participant-item"
@@ -121,6 +167,29 @@
           <span class="status-icon" [class.enabled]="participant.audioEnabled">🎤</span>
           <span class="status-icon" [class.enabled]="participant.videoEnabled">📹</span>
         </div>
+      </div>
+    </div>
+
+    <!-- Debug info -->
+    <div class="debug-stats" *ngIf="state.isConnected">
+      <h4>📊 Debug Stats</h4>
+      <ul>
+        <li>Connected: {{ state.isConnected ? 'Yes' : 'No' }}</li>
+        <li>Producing: {{ state.isProducing ? 'Yes' : 'No' }}</li>
+        <li>Local Video: {{ localVideoEnabled ? 'On' : 'Off' }}</li>
+        <li>Local Audio: {{ localAudioEnabled ? 'On' : 'Off' }}</li>
+        <li>Remote Consumers: {{ remoteConsumers.size }}</li>
+        <li>Participants: {{ participants.length }}</li>
+        <li>
+          Local Video Muted: {{ localVideoRef?.nativeElement?.muted ?? false ? 'Yes' : 'No' }}
+        </li>
+        <li>Local Video Volume: {{ localVideoRef?.nativeElement?.volume ?? 0 }}</li>
+      </ul>
+
+      <div class="debug-actions">
+        <h5>🔧 Debug Actions</h5>
+        <button class="debug-btn" (click)="checkLocalVideoSettings()">🔍 Check Local Video</button>
+        <button class="debug-btn" (click)="forceLocalVideoMute()">🔇 Force Mute Local</button>
       </div>
     </div>
   </div>
